@@ -832,6 +832,13 @@
       document.getElementById('babanuki-dealer-cards').innerHTML = '';
       document.getElementById('babanuki-bet-total').innerText = '0';
       document.getElementById('babanuki-status').innerText = '予想を選択し、ベットを行ってください';
+      
+      // UIのラベル表記も変更
+      const playerLabel = document.querySelector('#babanuki-screen .area-layout div:last-child div:last-child');
+      const dealerLabel = document.querySelector('#babanuki-screen .area-layout div:first-child div:first-child');
+      if (playerLabel) playerLabel.innerText = 'PLAYER HAND (1枚)';
+      if (dealerLabel) dealerLabel.innerText = 'DEALER HAND (2枚: Joker & A)';
+
       setBabanukiBtns(true, true, false, true);
     }
 
@@ -864,19 +871,20 @@
     function babanukiStart() {
       setBabanukiBtns(false, false, false, false);
 
+      // プレイヤー1枚 (A)
       babaPlayerHand = [
-        { suit: '🃏', label: 'JOKER', rawValue: 0, isJoker: true },
         { suit: '♠', label: 'A', rawValue: 1, isJoker: false }
-      ].sort(() => Math.random() - 0.5);
-
-      babaDealerHand = [
-        { suit: '♥', label: 'A', rawValue: 1, isJoker: false }
       ];
 
-      renderBabanukiView(false, false);
-      
-      document.getElementById('babanuki-status').innerText = 'ディーラーのターン：ディーラーがあなたの手札から1枚引きます…';
-      setTimeout(babanukiDealerTurn, 1200);
+      // ディーラー2枚 (Joker & A) をシャッフル
+      babaDealerHand = [
+        { suit: '🃏', label: 'JOKER', rawValue: 0, isJoker: true },
+        { suit: '♥', label: 'A', rawValue: 1, isJoker: false }
+      ].sort(() => Math.random() - 0.5);
+
+      // プレイヤーのターンから開始（カードを選択可能にする）
+      renderBabanukiView(false, true);
+      document.getElementById('babanuki-status').innerText = 'あなたのターン：ディーラーの手札をタップして1枚引いてください！';
     }
 
     function renderBabanukiView(showAll = false, canSelectDealerCard = false) {
@@ -1297,4 +1305,3 @@
   </script>
 </body>
 </html>
-
