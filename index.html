@@ -305,7 +305,6 @@
       <button class="menu-btn" onclick="switchScreen('bj-screen', initBJ)">BLACKJACK</button>
       <button class="menu-btn" onclick="switchScreen('indian-screen', initIndian)">INDIAN POKER</button>
       <button class="menu-btn" onclick="switchScreen('babanuki-screen', initBabanuki)">BET ババ抜き (最終局面)</button>
-      <button class="menu-btn" onclick="switchScreen('poker-screen', initPoker)">BET ポーカー</button>
       <button class="menu-btn" onclick="switchScreen('sicbo-screen', initSicbo)">SIC BO (大小)</button>
     </div>
     <div></div>
@@ -406,42 +405,7 @@
     </div>
   </section>
 
-  <!-- ⑤ BET ポーカー -->
-  <section id="poker-screen" class="screen">
-    <button class="exit-btn cinema-text" onclick="switchScreen('lobby-screen')">LOBBY</button>
-    <div class="top-info"><div>WALLET: $<span id="poker-balance">500</span></div><div class="bet-display">BET: $<span id="poker-bet-total">0</span></div></div>
-
-    <div class="area-layout">
-      <div style="text-align: center;">
-        <div style="font-weight: bold; margin-bottom: 5px;">DEALER HAND</div>
-        <div id="poker-dealer-cards" class="card-slots"></div>
-      </div>
-      <div id="poker-status" class="status-msg">勝敗予想を選択し、ベットしてください</div>
-      <div style="text-align: center;">
-        <div id="poker-player-cards" class="card-slots"></div>
-        <div style="font-weight: bold; margin-top: 5px;">PLAYER HAND (交換可能回数: <span id="poker-change-left">2</span>)</div>
-      </div>
-    </div>
-
-    <div class="chip-rack" id="poker-chips">
-      <div class="chip chip-10 selected" onclick="selectChip(10, this)">10</div>
-      <div class="chip chip-50" onclick="selectChip(50, this)">50</div>
-      <div class="chip chip-100" onclick="selectChip(100, this)">100</div>
-      <div class="chip chip-500" onclick="selectChip(500, this)">500</div>
-    </div>
-
-    <div class="controls">
-      <button id="poker-btn-pwin" class="btn btn-primary" onclick="setPokerPrediction('PLAYER_WIN')">PLAYER WIN (2倍)</button>
-      <button id="poker-btn-dwin" class="btn btn-danger" onclick="setPokerPrediction('DEALER_WIN')">DEALER WIN (2倍)</button>
-      <button id="poker-btn-draw" class="btn btn-blue" onclick="setPokerPrediction('DRAW')">DRAW (5倍)</button>
-      <button id="poker-btn-deal" class="btn btn-primary" onclick="pokerStart()" disabled>ディール</button>
-      <button id="poker-btn-exchange" class="btn btn-blue" onclick="pokerExchange()" disabled>選択カードを交換</button>
-      <button id="poker-btn-showdown" class="btn btn-primary" onclick="pokerShowdown()" disabled>勝負 (ショウダウン)</button>
-      <button id="poker-btn-clear" class="btn" onclick="pokerClearBet()">クリア</button>
-    </div>
-  </section>
-
-  <!-- ⑥ SIC BO -->
+  <!-- ⑤ SIC BO -->
   <section id="sicbo-screen" class="screen">
     <button class="exit-btn cinema-text" onclick="switchScreen('lobby-screen')">LOBBY</button>
     <div class="top-info"><div>WALLET: $<span id="sicbo-balance">500</span></div><div class="bet-display">TOTAL BET: $<span id="sicbo-total-bet">0</span></div></div>
@@ -518,7 +482,7 @@
     }
 
     function updateAllBalances() {
-      ['lobby', 'babanuki', 'poker', 'bj', 'indian', 'sicbo'].forEach(id => {
+      ['lobby', 'babanuki', 'bj', 'indian', 'sicbo'].forEach(id => {
         const el = document.getElementById(`${id}-balance`);
         if(el) el.innerText = balance;
       });
@@ -833,7 +797,6 @@
       document.getElementById('babanuki-bet-total').innerText = '0';
       document.getElementById('babanuki-status').innerText = '予想を選択し、ベットを行ってください';
       
-      // UIのラベル表記も変更
       const playerLabel = document.querySelector('#babanuki-screen .area-layout div:last-child div:last-child');
       const dealerLabel = document.querySelector('#babanuki-screen .area-layout div:first-child div:first-child');
       if (playerLabel) playerLabel.innerText = 'PLAYER HAND (1枚)';
@@ -871,18 +834,15 @@
     function babanukiStart() {
       setBabanukiBtns(false, false, false, false);
 
-      // プレイヤー1枚 (A)
       babaPlayerHand = [
         { suit: '♠', label: 'A', rawValue: 1, isJoker: false }
       ];
 
-      // ディーラー2枚 (Joker & A) をシャッフル
       babaDealerHand = [
         { suit: '🃏', label: 'JOKER', rawValue: 0, isJoker: true },
         { suit: '♥', label: 'A', rawValue: 1, isJoker: false }
       ].sort(() => Math.random() - 0.5);
 
-      // プレイヤーのターンから開始（カードを選択可能にする）
       renderBabanukiView(false, true);
       document.getElementById('babanuki-status').innerText = 'あなたのターン：ディーラーの手札をタップして1枚引いてください！';
     }
@@ -981,239 +941,7 @@
     }
 
     // ==========================================
-    // ④ BET ポーカー LOGIC
-    // ==========================================
-    let pokerBet = 0;
-    let pokerPrediction = null;
-    let pokerDeck = [];
-    let pokerPlayerHand = [];
-    let pokerDealerHand = [];
-    let pokerChangeLeft = 2;
-    let pokerSelectedIndices = [];
-
-    function initPoker() {
-      pokerBet = 0; pokerPrediction = null; pokerSelectedIndices = [];
-      document.getElementById('poker-player-cards').innerHTML = '';
-      document.getElementById('poker-dealer-cards').innerHTML = '';
-      document.getElementById('poker-bet-total').innerText = '0';
-      document.getElementById('poker-change-left').innerText = '2';
-      document.getElementById('poker-status').innerText = '勝敗予想を選択し、ベットしてください';
-      setPokerBtns(true, true, true, false, false, false, true);
-    }
-
-    function setPokerBtns(pwin, dwin, draw, deal, exch, show, clear) {
-      document.getElementById('poker-btn-pwin').disabled = !pwin;
-      document.getElementById('poker-btn-dwin').disabled = !dwin;
-      document.getElementById('poker-btn-draw').disabled = !draw;
-      document.getElementById('poker-btn-deal').disabled = !deal;
-      document.getElementById('poker-btn-exchange').disabled = !exch;
-      document.getElementById('poker-btn-showdown').disabled = !show;
-      document.getElementById('poker-btn-clear').disabled = !clear;
-    }
-
-    function setPokerPrediction(pred) {
-      if(balance < currentSelectedChip) return alert("資金が足りません");
-      pokerPrediction = pred;
-      pokerBet += currentSelectedChip;
-      balance -= currentSelectedChip;
-      document.getElementById('poker-bet-total').innerText = pokerBet;
-      updateAllBalances();
-      let label = pred === 'PLAYER_WIN' ? 'PLAYER WIN (2倍)' : (pred === 'DEALER_WIN' ? 'DEALER WIN (2倍)' : 'DRAW (5倍)');
-      document.getElementById('poker-status').innerText = `予想: ${label} に $${pokerBet} ベット中。ディールできます。`;
-      setPokerBtns(true, true, true, true, false, false, true);
-    }
-
-    function pokerClearBet() {
-      balance += pokerBet; pokerBet = 0; pokerPrediction = null;
-      document.getElementById('poker-bet-total').innerText = '0';
-      updateAllBalances();
-      document.getElementById('poker-status').innerText = '勝敗予想を選択してください';
-      setPokerBtns(true, true, true, false, false, false, true);
-    }
-
-    function pokerStart() {
-      pokerDeck = generateShuffledDeck(false);
-      pokerPlayerHand = [pokerDeck.pop(), pokerDeck.pop(), pokerDeck.pop(), pokerDeck.pop(), pokerDeck.pop()];
-      pokerDealerHand = [pokerDeck.pop(), pokerDeck.pop(), pokerDeck.pop(), pokerDeck.pop(), pokerDeck.pop()];
-      pokerChangeLeft = 2; pokerSelectedIndices = [];
-      document.getElementById('poker-change-left').innerText = pokerChangeLeft;
-
-      renderPokerView(false);
-      document.getElementById('poker-status').innerText = '交換したいカードをタップして「カード交換」を押すか、そのまま「勝負」してください';
-      setPokerBtns(false, false, false, false, true, true, false);
-    }
-
-    function renderPokerView(showDealer = false) {
-      const pArea = document.getElementById('poker-player-cards');
-      const dArea = document.getElementById('poker-dealer-cards');
-      pArea.innerHTML = ''; dArea.innerHTML = '';
-
-      pokerPlayerHand.forEach((c, idx) => {
-        const el = createRealCard(c, false, (cardEl) => pokerToggleSelectCard(idx, cardEl));
-        if(pokerSelectedIndices.includes(idx)) el.classList.add('selected-for-exchange');
-        pArea.appendChild(el);
-      });
-
-      pokerDealerHand.forEach(c => dArea.appendChild(createRealCard(c, !showDealer)));
-    }
-
-    function pokerToggleSelectCard(idx, cardEl) {
-      if(pokerChangeLeft <= 0) return;
-      const sIdx = pokerSelectedIndices.indexOf(idx);
-      if(sIdx >= 0) {
-        pokerSelectedIndices.splice(sIdx, 1);
-        cardEl.classList.remove('selected-for-exchange');
-      } else {
-        pokerSelectedIndices.push(idx);
-        cardEl.classList.add('selected-for-exchange');
-      }
-    }
-
-    function pokerExchange() {
-      if(pokerChangeLeft <= 0) return;
-      pokerSelectedIndices.forEach(i => {
-        pokerPlayerHand[i] = pokerDeck.pop();
-      });
-      pokerSelectedIndices = [];
-      pokerChangeLeft--;
-      document.getElementById('poker-change-left').innerText = pokerChangeLeft;
-
-      pokerDealerAIChange();
-
-      renderPokerView(false);
-      if(pokerChangeLeft <= 0) {
-        document.getElementById('poker-btn-exchange').disabled = true;
-        document.getElementById('poker-status').innerText = '交換回数が尽きました。「勝負」を押してください';
-      } else {
-        document.getElementById('poker-status').innerText = `カードを交換しました。(残り交換回数: ${pokerChangeLeft})`;
-      }
-    }
-
-    function pokerDealerAIChange() {
-      let evalResult = evaluatePokerHand(pokerDealerHand);
-      let hand = pokerDealerHand;
-      let ranks = evalResult.ranks;
-      let counts = evalResult.counts;
-
-      let discardIndices = [];
-
-      if (evalResult.rank === 4 || evalResult.rank === 8) {
-        let tripRank = Number(Object.keys(counts).find(key => counts[key] >= 3));
-        hand.forEach((c, i) => {
-          let r = c.rawValue === 1 ? 14 : c.rawValue;
-          if (r !== tripRank) discardIndices.push(i);
-        });
-      }
-      else if (evalResult.rank === 3) {
-        hand.forEach((c, i) => {
-          let r = c.rawValue === 1 ? 14 : c.rawValue;
-          if (counts[r] === 1) discardIndices.push(i);
-        });
-      }
-      else if (evalResult.rank === 2) {
-        let pairRank = Number(Object.keys(counts).find(key => counts[key] === 2));
-        hand.forEach((c, i) => {
-          let r = c.rawValue === 1 ? 14 : c.rawValue;
-          if (r !== pairRank) discardIndices.push(i);
-        });
-      }
-      else {
-        let suitCounts = {};
-        hand.forEach(c => suitCounts[c.suit] = (suitCounts[c.suit] || 0) + 1);
-        let flushSuit = Object.keys(suitCounts).find(s => suitCounts[s] === 4);
-
-        if (flushSuit) {
-          hand.forEach((c, i) => {
-            if (c.suit !== flushSuit) discardIndices.push(i);
-          });
-        } else {
-          let highCardKeepIdx = -1;
-          let maxRank = 0;
-
-          hand.forEach((c, i) => {
-            let r = c.rawValue === 1 ? 14 : c.rawValue;
-            if (r < 11) {
-              discardIndices.push(i);
-            }
-            if (r > maxRank) {
-              maxRank = r;
-              highCardKeepIdx = i;
-            }
-          });
-
-          if (discardIndices.length === 5) {
-            discardIndices = discardIndices.filter(i => i !== highCardKeepIdx);
-          }
-        }
-      }
-
-      discardIndices.forEach(idx => {
-        pokerDealerHand[idx] = pokerDeck.pop();
-      });
-    }
-
-    function evaluatePokerHand(hand) {
-      let ranks = hand.map(c => c.rawValue === 1 ? 14 : c.rawValue).sort((a,b) => a - b);
-      let suitsArr = hand.map(c => c.suit);
-      let isFlush = suitsArr.every(s => s === suitsArr[0]);
-      let isStraight = (ranks[4] - ranks[0] === 4 && new Set(ranks).size === 5) || 
-                         (ranks[0]===2 && ranks[1]===3 && ranks[2]===4 && ranks[3]===5 && ranks[4]===14);
-
-      let counts = {};
-      ranks.forEach(r => counts[r] = (counts[r] || 0) + 1);
-      let countValues = Object.values(counts).sort((a,b) => b - a);
-
-      let rank = 1;
-      let name = "ハイカード";
-
-      if(isStraight && isFlush) { rank = 9; name = "ストレートフラッシュ"; }
-      else if(countValues[0] === 4) { rank = 8; name = "フォーカード"; }
-      else if(countValues[0] === 3 && countValues[1] === 2) { rank = 7; name = "フルハウス"; }
-      else if(isFlush) { rank = 6; name = "フラッシュ"; }
-      else if(isStraight) { rank = 5; name = "ストレート"; }
-      else if(countValues[0] === 3) { rank = 4; name = "スリーカード"; }
-      else if(countValues[0] === 2 && countValues[1] === 2) { rank = 3; name = "ツーペア"; }
-      else if(countValues[0] === 2) { rank = 2; name = "ワンペア"; }
-
-      return { rank, name, ranks, counts };
-    }
-
-    function comparePokerHands(pHand, dHand) {
-      let pEval = evaluatePokerHand(pHand);
-      let dEval = evaluatePokerHand(dHand);
-
-      if(pEval.rank > dEval.rank) return { winner: 'PLAYER_WIN', pEval, dEval };
-      if(pEval.rank < dEval.rank) return { winner: 'DEALER_WIN', pEval, dEval };
-
-      for(let i=4; i>=0; i--) {
-        if(pEval.ranks[i] > dEval.ranks[i]) return { winner: 'PLAYER_WIN', pEval, dEval };
-        if(pEval.ranks[i] < dEval.ranks[i]) return { winner: 'DEALER_WIN', pEval, dEval };
-      }
-      return { winner: 'DRAW', pEval, dEval };
-    }
-
-    function pokerShowdown() {
-      renderPokerView(true);
-      let res = comparePokerHands(pokerPlayerHand, pokerDealerHand);
-      let isSuccess = (pokerPrediction === res.winner);
-      let payoutFactor = 0;
-
-      if(isSuccess) {
-        payoutFactor = (pokerPrediction === 'DRAW') ? 5 : 2;
-        let winAmt = pokerBet * payoutFactor;
-        balance += winAmt;
-        document.getElementById('poker-status').innerText = `【結果】あなた:${res.pEval.name} vs 相手:${res.dEval.name} 🎯 予想的中！ $${winAmt}獲得！`;
-      } else {
-        document.getElementById('poker-status').innerText = `【結果】あなた:${res.pEval.name} vs 相手:${res.dEval.name} ❌ 予想不的中…`;
-      }
-
-      pokerBet = 0; pokerPrediction = null;
-      updateAllBalances();
-      setPokerBtns(true, true, true, false, false, false, true);
-    }
-
-    // ==========================================
-    // ⑤ SIC BO LOGIC
+    // ④ SIC BO LOGIC
     // ==========================================
     let sicboBets = {
       big: 0, small: 0, anyTriple: 0,
@@ -1305,3 +1033,4 @@
   </script>
 </body>
 </html>
+
